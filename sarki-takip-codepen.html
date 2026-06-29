@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Defteri</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo:wght@500;600;700;800&display=swap');
+
+  :root{
+    --bg:#16140f;
+    --paper:#1f1c15;
+    --paper-raised:#27231a;
+    --ink:#f1ead8;
+    --ink-dim:#a89d83;
+    --line:#3a3526;
+    --tape:#e8b84b;
+    --planned:#6b8caf;
+    --prep:#e8b84b;
+    --done:#7fae6f;
+    --danger:#c9694f;
+
+    --spotify:#1db954;
+    --youtube:#e0473e;
+    --shorts:#e0473e;
+    --reels:#c23b8f;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(241,234,216,0.035) 1px, transparent 1px);
+    background-size: 14px 14px;
+    color:var(--ink);
+    font-family:'Archivo', sans-serif;
+    min-height:100vh;
+    padding-bottom:100px;
+  }
+
+  /* HEADER */
+  header{
+    padding:28px 20px 18px;
+  }
+  .eyebrow{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--tape);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:6px;height:6px;
+    background:var(--tape);
+    border-radius:50%;
+    display:inline-block;
+  }
+  h1{
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    font-size:34px;
+    letter-spacing:-0.02em;
+    margin:0;
+    line-height:1.02;
+  }
+  .sub{
+    font-family:'Space Mono', monospace;
+    color:var(--ink-dim);
+    font-size:12.5px;
+    margin-top:8px;
+    letter-spacing:0.01em;
+  }
+
+  /* STATS STRIP */
+  .stats{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:1px;
+    background:var(--line);
+    margin:18px 20px 24px;
+    border:1px solid var(--line);
+  }
+  .stat{
+    background:var(--paper);
+    padding:14px 10px;
+    text-align:center;
+  }
+  .stat .n{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    font-size:22px;
+    line-height:1;
+  }
+  .stat .l{
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-top:5px;
+  }
+  .stat.planned .n{color:var(--planned);}
+  .stat.prep .n{color:var(--prep);}
+  .stat.done .n{color:var(--done);}
+
+  /* FILTER TABS */
+  .tabs{
+    display:flex;
+    gap:8px;
+    padding:0 20px;
+    margin-bottom:16px;
+    overflow-x:auto;
+  }
+  .tab{
+    font-family:'Space Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:0.04em;
+    padding:7px 13px;
+    border:1px solid var(--line);
+    border-radius:100px;
+    color:var(--ink-dim);
+    background:transparent;
+    white-space:nowrap;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .tab.active{
+    background:var(--ink);
+    color:var(--bg);
+    border-color:var(--ink);
+    font-weight:700;
+  }
+
+  /* LIST */
+  #list{
+    padding:0 20px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 14px 13px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .card-title{
+    font-weight:700;
+    font-size:16.5px;
+    line-height:1.25;
+    letter-spacing:-0.01em;
+  }
+  .card-date{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    margin-top:5px;
+  }
+
+  /* PLATFORM PILLS */
+  .platform-row{
+    display:flex;
+    gap:6px;
+    margin-top:11px;
+    flex-wrap:wrap;
+  }
+  .platform-pill{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-family:'Space Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.02em;
+    padding:5px 9px;
+    border-radius:100px;
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+  }
+  .platform-pill .dot{
+    width:6px;height:6px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .platform-pill .pname{color:var(--ink-dim);}
+  .platform-pill .pstatus{font-weight:700;}
+
+  .dot.st-planlanan{background:var(--planned);}
+  .dot.st-hazirlaniyor{background:var(--prep);}
+  .dot.st-yuklendi{background:var(--done);}
+  .pstatus.st-planlanan{color:var(--planned);}
+  .pstatus.st-hazirlaniyor{color:var(--prep);}
+  .pstatus.st-yuklendi{color:var(--done);}
+
+  .card-note{
+    font-size:13px;
+    color:var(--ink-dim);
+    margin-top:10px;
+    line-height:1.45;
+    border-top:1px dashed var(--line);
+    padding-top:9px;
+  }
+
+  .card-actions{
+    display:flex;
+    gap:8px;
+    margin-top:11px;
+  }
+  .mini-btn{
+    font-family:'Space Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.03em;
+    padding:6px 10px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+    color:var(--ink-dim);
+    cursor:pointer;
+  }
+  .mini-btn.del{color:var(--danger); border-color:rgba(201,105,79,0.3);}
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-dim);
+  }
+  .empty .mark{
+    font-family:'Space Mono', monospace;
+    font-size:36px;
+    color:var(--line);
+    margin-bottom:10px;
+    letter-spacing:0.1em;
+  }
+  .empty p{font-size:13.5px; line-height:1.5; max-width:260px; margin:0 auto;}
+
+  /* FAB */
+  .fab{
+    position:fixed;
+    bottom:24px; right:20px;
+    width:58px; height:58px;
+    border-radius:50%;
+    background:var(--tape);
+    color:#16140f;
+    border:none;
+    font-size:28px;
+    font-weight:700;
+    box-shadow:0 8px 24px rgba(232,184,75,0.35), 0 2px 6px rgba(0,0,0,0.3);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:30;
+  }
+  .fab:active{transform:scale(0.94);}
+
+  /* SHEET / MODAL */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(10,9,6,0.6);
+    backdrop-filter:blur(2px);
+    z-index:40;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease;
+  }
+  .overlay.open{opacity:1; pointer-events:auto;}
+
+  .sheet{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    background:var(--paper);
+    border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;
+    padding:10px 20px 28px;
+    z-index:41;
+    transform:translateY(100%);
+    transition:transform 0.28s cubic-bezier(.32,.72,0,1);
+    max-height:88vh;
+    overflow-y:auto;
+  }
+  .sheet.open{transform:translateY(0);}
+  .sheet-handle{
+    width:36px; height:4px;
+    background:var(--line);
+    border-radius:4px;
+    margin:6px auto 16px;
+  }
+  .sheet h2{
+    font-size:19px;
+    font-weight:800;
+    margin:0 0 18px;
+    letter-spacing:-0.01em;
+  }
+
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;
+    font-family:'Space Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:7px;
+  }
+  .field input, .field textarea{
+    width:100%;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:11px 12px;
+    color:var(--ink);
+    font-family:'Archivo', sans-serif;
+    font-size:15px;
+    outline:none;
+  }
+  .field input:focus, .field textarea:focus{
+    border-color:var(--tape);
+  }
+  .field textarea{resize:none; height:56px; font-size:14px;}
+
+  .status-picker{
+    display:flex;
+    gap:6px;
+  }
+  .status-opt{
+    flex:1;
+    text-align:center;
+    padding:9px 4px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    font-family:'Space Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.01em;
+    color:var(--ink-dim);
+    cursor:pointer;
+  }
+  .status-opt.sel-planlanan{border-color:var(--planned); color:var(--planned); background:rgba(107,140,175,0.12);}
+  .status-opt.sel-hazirlaniyor{border-color:var(--prep); color:var(--prep); background:rgba(232,184,75,0.12);}
+  .status-opt.sel-yuklendi{border-color:var(--done); color:var(--done); background:rgba(127,174,111,0.12);}
+
+  .platform-field{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:10px;
+    background:var(--paper-raised);
+  }
+  .platform-field-label{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-weight:700;
+    font-size:13px;
+    margin-bottom:9px;
+  }
+  .platform-field-label .dot{width:8px;height:8px;border-radius:50%;}
+
+  .sheet-actions{
+    display:flex;
+    gap:10px;
+    margin-top:6px;
+  }
+  .btn{
+    flex:1;
+    padding:13px;
+    border-radius:10px;
+    border:none;
+    font-family:'Archivo', sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--tape); color:#16140f;}
+  .btn-ghost{background:transparent; color:var(--ink-dim); border:1px solid var(--line);}
+
+  .toast{
+    position:fixed;
+    top:18px; left:50%;
+    transform:translateX(-50%) translateY(-20px);
+    background:var(--ink);
+    color:var(--bg);
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    padding:9px 16px;
+    border-radius:100px;
+    z-index:50;
+    opacity:0;
+    transition:all 0.25s ease;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Yayın Defteri</div>
+  <h1>Track<br>Listesi</h1>
+  <div class="sub" id="dateNow">—</div>
+</header>
+
+<div class="stats">
+  <div class="stat planned"><div class="n" id="countPlanlanan">0</div><div class="l">Planlanan</div></div>
+  <div class="stat prep"><div class="n" id="countHazirlaniyor">0</div><div class="l">Hazırlanıyor</div></div>
+  <div class="stat done"><div class="n" id="countYuklendi">0</div><div class="l">Yüklendi</div></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-filter="hepsi">Hepsi</button>
+  <button class="tab" data-filter="spotify">Spotify</button>
+  <button class="tab" data-filter="youtube">YouTube</button>
+  <button class="tab" data-filter="shorts">Shorts</button>
+  <button class="tab" data-filter="reels">Reels</button>
+</div>
+
+<div id="list"></div>
+
+<button class="fab" id="addBtn" aria-label="Yeni şarkı ekle">+</button>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <h2 id="sheetTitle">Yeni Track</h2>
+  <div class="field">
+    <label>Şarkı Adı</label>
+    <input type="text" id="fName" placeholder="örn. Gece Yarısı">
+  </div>
+  <div class="field">
+    <label>Tarih</label>
+    <input type="date" id="fDate">
+  </div>
+
+  <div class="field" style="margin-bottom:10px;">
+    <label>Platform Durumları</label>
+  </div>
+
+  <div class="platform-field">
+    <div class="platform-field-label"><span class="dot" style="background:var(--spotify)"></span>Spotify</div>
+    <div class="status-picker" data-platform="spotify">
+      <div class="status-opt" data-status="planlanan">Planlanan</div>
+      <div class="status-opt" data-status="hazirlaniyor">Hazırlanıyor</div>
+      <div class="status-opt" data-status="yuklendi">Yüklendi</div>
+    </div>
+  </div>
+
+  <div class="platform-field">
+    <div class="platform-field-label"><span class="dot" style="background:var(--youtube)"></span>YouTube</div>
+    <div class="status-picker" data-platform="youtube">
+      <div class="status-opt" data-status="planlanan">Planlanan</div>
+      <div class="status-opt" data-status="hazirlaniyor">Hazırlanıyor</div>
+      <div class="status-opt" data-status="yuklendi">Yüklendi</div>
+    </div>
+  </div>
+
+  <div class="platform-field">
+    <div class="platform-field-label"><span class="dot" style="background:var(--shorts)"></span>YouTube Shorts</div>
+    <div class="status-picker" data-platform="shorts">
+      <div class="status-opt" data-status="planlanan">Planlanan</div>
+      <div class="status-opt" data-status="hazirlaniyor">Hazırlanıyor</div>
+      <div class="status-opt" data-status="yuklendi">Yüklendi</div>
+    </div>
+  </div>
+
+  <div class="platform-field">
+    <div class="platform-field-label"><span class="dot" style="background:var(--reels)"></span>Instagram Reels</div>
+    <div class="status-picker" data-platform="reels">
+      <div class="status-opt" data-status="planlanan">Planlanan</div>
+      <div class="status-opt" data-status="hazirlaniyor">Hazırlanıyor</div>
+      <div class="status-opt" data-status="yuklendi">Yüklendi</div>
+    </div>
+  </div>
+
+  <div class="field" style="margin-top:6px;">
+    <label>Not (opsiyonel)</label>
+    <textarea id="fNote" placeholder="mix notu, link, fikir..."></textarea>
+  </div>
+  <div class="sheet-actions">
+    <button class="btn btn-ghost" id="cancelBtn">Vazgeç</button>
+    <button class="btn btn-primary" id="saveBtn">Kaydet</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'tracks_v2';
+let tracks = [];
+let currentFilter = 'hepsi';
+let editingId = null;
+
+const PLATFORMS = ['spotify','youtube','shorts','reels'];
+const PLATFORM_LABEL = {
+  spotify: 'Spotify',
+  youtube: 'YouTube',
+  shorts: 'YT Shorts',
+  reels: 'Reels'
+};
+const STATUS_LABEL = {
+  planlanan: 'Planlanan',
+  hazirlaniyor: 'Hazırlanıyor',
+  yuklendi: 'Yüklendi'
+};
+
+let selectedStatuses = {spotify:'planlanan', youtube:'planlanan', shorts:'planlanan', reels:'planlanan'};
+
+const list = document.getElementById('list');
+const overlay = document.getElementById('overlay');
+const sheet = document.getElementById('sheet');
+const toast = document.getElementById('toast');
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(()=> toast.classList.remove('show'), 1700);
+}
+
+function formatDate(iso){
+  if(!iso) return 'Tarih yok';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('tr-TR', {day:'numeric', month:'long', year:'numeric'});
+}
+
+function setHeaderDate(){
+  const now = new Date();
+  document.getElementById('dateNow').textContent =
+    now.toLocaleDateString('tr-TR', {day:'numeric', month:'long', year:'numeric', weekday:'long'}).toUpperCase();
+}
+
+function loadTracks(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    tracks = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    tracks = [];
+  }
+  render();
+}
+
+function saveTracks(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tracks));
+  }catch(e){
+    showToast('Kaydetme hatası');
+  }
+}
+
+function render(){
+  const filtered = currentFilter === 'hepsi'
+    ? tracks
+    : tracks.filter(t => t.platforms && t.platforms[currentFilter]);
+
+  const sorted = [...filtered].sort((a,b) => {
+    if(!a.date && !b.date) return 0;
+    if(!a.date) return 1;
+    if(!b.date) return -1;
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  // overall stats: count each platform-status occurrence across all tracks
+  let cPlanlanan=0, cHazirlaniyor=0, cYuklendi=0;
+  tracks.forEach(t => {
+    PLATFORMS.forEach(p => {
+      const s = t.platforms ? t.platforms[p] : null;
+      if(s === 'planlanan') cPlanlanan++;
+      if(s === 'hazirlaniyor') cHazirlaniyor++;
+      if(s === 'yuklendi') cYuklendi++;
+    });
+  });
+  document.getElementById('countPlanlanan').textContent = cPlanlanan;
+  document.getElementById('countHazirlaniyor').textContent = cHazirlaniyor;
+  document.getElementById('countYuklendi').textContent = cYuklendi;
+
+  if(sorted.length === 0){
+    list.innerHTML = `
+      <div class="empty">
+        <div class="mark">∅</div>
+        <p>${currentFilter === 'hepsi' ? 'Henüz track yok. Sağ alttaki + ile ilk şarkını ekle.' : 'Bu platformda track yok.'}</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(t => `
+    <div class="card" data-id="${t.id}">
+      <div class="card-top">
+        <div>
+          <div class="card-title">${escapeHtml(t.name)}</div>
+          <div class="card-date">${formatDate(t.date)}</div>
+        </div>
+      </div>
+      <div class="platform-row">
+        ${PLATFORMS.map(p => {
+          const s = (t.platforms && t.platforms[p]) || 'planlanan';
+          return `<div class="platform-pill">
+            <span class="dot st-${s}"></span>
+            <span class="pname">${PLATFORM_LABEL[p]}</span>
+            <span class="pstatus st-${s}">${STATUS_LABEL[s]}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      ${t.note ? `<div class="card-note">${escapeHtml(t.note)}</div>` : ''}
+      <div class="card-actions">
+        <button class="mini-btn edit" data-id="${t.id}">Düzenle</button>
+        <button class="mini-btn del" data-id="${t.id}">Sil</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function openSheet(track){
+  editingId = track ? track.id : null;
+  document.getElementById('sheetTitle').textContent = track ? 'Track Düzenle' : 'Yeni Track';
+  document.getElementById('fName').value = track ? track.name : '';
+  document.getElementById('fDate').value = track ? (track.date || '') : '';
+  document.getElementById('fNote').value = track ? (track.note || '') : '';
+
+  PLATFORMS.forEach(p => {
+    selectedStatuses[p] = (track && track.platforms && track.platforms[p]) || 'planlanan';
+  });
+  updateAllStatusPickers();
+
+  overlay.classList.add('open');
+  sheet.classList.add('open');
+  setTimeout(()=> document.getElementById('fName').focus(), 300);
+}
+
+function closeSheet(){
+  overlay.classList.remove('open');
+  sheet.classList.remove('open');
+  editingId = null;
+}
+
+function updateAllStatusPickers(){
+  document.querySelectorAll('.status-picker').forEach(picker => {
+    const platform = picker.dataset.platform;
+    picker.querySelectorAll('.status-opt').forEach(el => {
+      el.classList.remove('sel-planlanan','sel-hazirlaniyor','sel-yuklendi');
+      if(el.dataset.status === selectedStatuses[platform]){
+        el.classList.add('sel-' + selectedStatuses[platform]);
+      }
+    });
+  });
+}
+
+document.querySelectorAll('.status-picker').forEach(picker => {
+  const platform = picker.dataset.platform;
+  picker.querySelectorAll('.status-opt').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedStatuses[platform] = el.dataset.status;
+      updateAllStatusPickers();
+    });
+  });
+});
+
+document.getElementById('addBtn').addEventListener('click', () => openSheet(null));
+document.getElementById('cancelBtn').addEventListener('click', closeSheet);
+overlay.addEventListener('click', closeSheet);
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const name = document.getElementById('fName').value.trim();
+  const date = document.getElementById('fDate').value;
+  const note = document.getElementById('fNote').value.trim();
+
+  if(!name){
+    showToast('Şarkı adı boş olamaz');
+    return;
+  }
+
+  const platforms = {...selectedStatuses};
+
+  if(editingId){
+    const idx = tracks.findIndex(t => t.id === editingId);
+    if(idx > -1){
+      tracks[idx] = {...tracks[idx], name, date, note, platforms};
+    }
+    showToast('Güncellendi');
+  }else{
+    tracks.push({
+      id: 't' + Date.now() + Math.random().toString(36).slice(2,7),
+      name, date, note, platforms
+    });
+    showToast('Eklendi');
+  }
+
+  saveTracks();
+  render();
+  closeSheet();
+});
+
+list.addEventListener('click', (e) => {
+  const editBtn = e.target.closest('.edit');
+  const delBtn = e.target.closest('.del');
+
+  if(editBtn){
+    const id = editBtn.dataset.id;
+    const t = tracks.find(x => x.id === id);
+    if(t) openSheet(t);
+  }
+
+  if(delBtn){
+    const id = delBtn.dataset.id;
+    tracks = tracks.filter(x => x.id !== id);
+    saveTracks();
+    render();
+    showToast('Silindi');
+  }
+});
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  currentFilter = tab.dataset.filter;
+  render();
+});
+
+setHeaderDate();
+loadTracks();
+</script>
+</body>
+</html>
