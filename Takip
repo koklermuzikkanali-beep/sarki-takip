@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blue Verse Finance</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f2f2f7; padding: 15px; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: #007AFF; color: white; border: none; font-weight: bold; }
+        .item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <div class="card" id="login">
+        <h3>Giriş</h3>
+        <input type="password" id="pass" placeholder="Şifre (1234)">
+        <button onclick="if(document.getElementById('pass').value == '1234') {document.getElementById('app').style.display='block'; document.getElementById('login').style.display='none';}">Giriş Yap</button>
+    </div>
+    <div id="app" style="display:none;">
+        <div class="card">
+            <h3>Kredi Ekle</h3>
+            <input type="date" id="date">
+            <input type="number" id="count" placeholder="Taksit Sayısı">
+            <input type="number" id="price" placeholder="Tutar (TL)">
+            <button onclick="addCredit()">Planı Oluştur</button>
+        </div>
+        <div class="card" id="list"></div>
+    </div>
+    <script>
+        function addCredit() {
+            let list = document.getElementById('list');
+            let d = document.getElementById('date').value;
+            let c = document.getElementById('count').value;
+            let p = document.getElementById('price').value;
+            list.innerHTML += `<div class='item'><span>${d}</span><span>${p} TL</span></div>`;
+        }
+    </script>
+</body>
+</html>
