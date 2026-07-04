@@ -383,7 +383,7 @@ function buildDisplayItems(){
         items.push({
           kind:'installment', entryId:e.id, instId:it.id,
           type:e.type, parentName:e.name,
-          date:it.date, amount:it.amount, paid:it.paid, currency:e.currency||'TRY',
+          date:it.date, amount:it.amount, paid:it.paid, currency:it.currency||e.currency||'TRY',
           index: idx+1, total: sorted.length
         });
       });
@@ -409,22 +409,35 @@ function renderHeader(){
   const today = new Date();
   document.getElementById('today').textContent = today.toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-  let debtTotal = 0, creditTotal = 0;
+  let debtTRY = 0, creditTRY = 0, debtUSD = 0, creditUSD = 0;
   entries.forEach(e=>{
     const rem = remainingAmount(e);
-    if(e.type==='debt') debtTotal += rem; else creditTotal += rem;
+    const cur = e.currency || 'TRY';
+    if(e.type==='debt'){
+      if(cur==='USD') debtUSD += rem; else debtTRY += rem;
+    } else {
+      if(cur==='USD') creditUSD += rem; else creditTRY += rem;
+    }
   });
-  const net = creditTotal - debtTotal;
+  
+  const netTRY = creditTRY - debtTRY;
+  const netUSD = creditUSD - debtUSD;
+  
   const netEl = document.getElementById('netValue');
-  netEl.textContent = fmtMoney(Math.abs(net));
-  netEl.className = 'balance-value ' + (net >= 0 ? 'credit' : 'debt');
+  netEl.textContent = fmtMoney(Math.abs(netTRY));
+  netEl.className = 'balance-value ' + (netTRY >= 0 ? 'credit' : 'debt');
 
   const fxEl = document.getElementById('netValueFx');
-  const fxVal = fmtFx(Math.abs(net));
-  fxEl.textContent = fxVal ? '≈ ' + fxVal : '';
+  let fxDisplay = '';
+  if(fx.rate && fx.rate > 0){
+    const tryEquiv = netUSD * fx.rate;
+    const totalNet = netTRY + tryEquiv;
+    fxDisplay = fmtMoney(Math.abs(totalNet)) + ' (USD hariç)';
+  }
+  fxEl.textContent = fxDisplay ? '≈ ' + fxDisplay : '';
 
   document.getElementById('netSub').innerHTML =
-    `gelir ${fmtMoney(creditTotal)}<br>borç ${fmtMoney(debtTotal)}`;
+    `gelir ₺${creditTRY.toLocaleString('tr-TR', {maximumFractionDigits:0})}${creditUSD>0 ? ' + $'+creditUSD.toLocaleString('tr-TR', {maximumFractionDigits:2}) : ''}<br>borç ₺${debtTRY.toLocaleString('tr-TR', {maximumFractionDigits:0})}${debtUSD>0 ? ' + $'+debtUSD.toLocaleString('tr-TR', {maximumFractionDigits:2}) : ''}`;
 }
 
 function renderList(){
@@ -573,7 +586,7 @@ document.getElementById('installmentList').addEventListener('click', (ev)=>{
   renderInstallmentEditor();
 });
 document.getElementById('addInstallment').addEventListener('click', ()=>{
-  currentInstallments.push({id:genId(), date:new Date().toISOString().slice(0,10), amount:0, paid:false});
+  currentInstallments.push({id:genId(), date:new Date().toISOString().slice(0,10), amount:0, paid:false, currency:selectedCurrency});
   renderInstallmentEditor();
 });
 document.getElementById('genPlan').addEventListener('click', ()=>{
@@ -595,7 +608,7 @@ document.getElementById('genPlan').addEventListener('click', ()=>{
     const d = new Date(startDate);
     if(intervalVal === 'month'){ d.setMonth(d.getMonth() + i); }
     else { d.setDate(d.getDate() + parseInt(intervalVal) * i); }
-    currentInstallments.push({ id:genId(), date:d.toISOString().slice(0,10), amount:perAmount, paid:false });
+    currentInstallments.push({ id:genId(), date:d.toISOString().slice(0,10), amount:perAmount, paid:false, currency:selectedCurrency });
   }
   const total = Math.round(perAmount * count * 100) / 100;
   document.getElementById('fAmount').value = total;
