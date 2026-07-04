@@ -250,7 +250,13 @@
       <span class="hint">Taksit oluşturursan bu, her taksitte ödenecek miktar olarak kullanılır.</span>
     </div>
     <div class="field">
-      <label>Tarih</label>
+      <label>Para Birimi</label>
+      <select id="fCurrency">
+        <option value="TRY">TRY · Türk Lirası</option>
+        <option value="USD">USD · Amerikan Doları</option>
+      </select>
+    </div>
+    <div class="field">
       <input type="date" id="fDate">
     </div>
     <div class="field">
@@ -316,6 +322,7 @@ const FX_KEY = 'borc-alacak-defteri-kur';
 let entries = [];
 let currentFilter = 'all';
 let selectedType = 'debt';
+let selectedCurrency = 'TRY';
 let editingId = null;
 let currentInstallments = [];
 let fx = { currency:'USD', rate:null, updatedAt:null, auto:false };
@@ -338,10 +345,21 @@ function saveFx(){ localStorage.setItem(FX_KEY, JSON.stringify(fx)); }
 function fmtMoney(n){
   return '₺' + Number(n).toLocaleString('tr-TR', {maximumFractionDigits:0});
 }
-function fmtFx(tryAmount){
+function fmtMoneyWithCurrency(n, currency){
+  if(currency === 'USD'){
+    return '$' + Number(n).toLocaleString('tr-TR', {maximumFractionDigits:2});
+  }
+  return '₺' + Number(n).toLocaleString('tr-TR', {maximumFractionDigits:0});
+}
+function getConvertedDisplay(amount, currency){
   if(!fx.rate || fx.rate<=0) return '';
-  const val = tryAmount / fx.rate;
-  return '$' + val.toLocaleString('tr-TR', {maximumFractionDigits:2});
+  if(currency === 'TRY'){
+    const usd = amount / fx.rate;
+    return `≈ $${usd.toLocaleString('tr-TR', {maximumFractionDigits:2})} olarak`;
+  } else {
+    const try_ = amount * fx.rate;
+    return `≈ ₺${try_.toLocaleString('tr-TR', {maximumFractionDigits:0})} olarak`;
+  }
 }
 function fmtDate(d){
   if(!d) return '';
@@ -365,7 +383,7 @@ function buildDisplayItems(){
         items.push({
           kind:'installment', entryId:e.id, instId:it.id,
           type:e.type, parentName:e.name,
-          date:it.date, amount:it.amount, paid:it.paid,
+          date:it.date, amount:it.amount, paid:it.paid, currency:e.currency||'TRY',
           index: idx+1, total: sorted.length
         });
       });
@@ -373,7 +391,7 @@ function buildDisplayItems(){
       items.push({
         kind:'entry', entryId:e.id,
         type:e.type, name:e.name, date:e.date, due:e.due,
-        amount:e.amount, paid:e.paid, note:e.note
+        amount:e.amount, paid:e.paid, note:e.note, currency:e.currency||'TRY'
       });
     }
   });
@@ -431,7 +449,7 @@ function renderList(){
       : overdue
         ? '<span class="badge overdue">vadesi geçti</span>'
         : `<span class="badge ${item.type}">${item.type==='debt'?'borç':'gelir'}</span>`;
-    const fxTxt = fmtFx(item.amount);
+    const convertTxt = getConvertedDisplay(item.amount, item.currency);
 
     if(item.kind==='entry'){
       return `
@@ -440,8 +458,8 @@ function renderList(){
           <div class="entry-name">${escapeHtml(item.name)}</div>
           <div class="leader"></div>
           <div class="amount-block">
-            <div class="entry-amount ${item.type}">${fmtMoney(item.amount)}</div>
-            ${fxTxt ? `<div class="entry-fx">≈ ${fxTxt}</div>` : ''}
+            <div class="entry-amount ${item.type}">${fmtMoneyWithCurrency(item.amount, item.currency)}</div>
+            ${convertTxt ? `<div class="entry-fx">${convertTxt}</div>` : ''}
           </div>
         </div>
         <div class="entry-meta">
@@ -464,8 +482,8 @@ function renderList(){
           <div class="entry-name">Taksit ${item.index}/${item.total}</div>
           <div class="leader"></div>
           <div class="amount-block">
-            <div class="entry-amount ${item.type}">${fmtMoney(item.amount)}</div>
-            ${fxTxt ? `<div class="entry-fx">≈ ${fxTxt}</div>` : ''}
+            <div class="entry-amount ${item.type}">${fmtMoneyWithCurrency(item.amount, item.currency)}</div>
+            ${convertTxt ? `<div class="entry-fx">${convertTxt}</div>` : ''}
           </div>
         </div>
         <div class="entry-meta">
@@ -594,6 +612,8 @@ function openAddSheet(){
   document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('fDue').value='';
   document.getElementById('fNote').value='';
+  document.getElementById('fCurrency').value = 'TRY';
+  selectedCurrency = 'TRY';
   document.getElementById('deleteRow').style.display='none';
   selectedType='debt';
   updateTypeButtons();
@@ -612,6 +632,8 @@ function openEdit(id){
   document.getElementById('fDate').value = e.date;
   document.getElementById('fDue').value = e.due || '';
   document.getElementById('fNote').value = e.note || '';
+  document.getElementById('fCurrency').value = e.currency || 'TRY';
+  selectedCurrency = e.currency || 'TRY';
   document.getElementById('deleteRow').style.display='flex';
   selectedType = e.type;
   updateTypeButtons();
@@ -626,6 +648,7 @@ overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) overlay.classL
 
 document.getElementById('btnDebt').addEventListener('click', ()=>{ selectedType='debt'; updateTypeButtons(); });
 document.getElementById('btnCredit').addEventListener('click', ()=>{ selectedType='credit'; updateTypeButtons(); });
+document.getElementById('fCurrency').addEventListener('change', (ev)=>{ selectedCurrency = ev.target.value; });
 function updateTypeButtons(){
   const bd = document.getElementById('btnDebt');
   const bc = document.getElementById('btnCredit');
@@ -648,9 +671,9 @@ document.getElementById('btnSave').addEventListener('click', ()=>{
   const cleanedInstallments = currentInstallments.filter(i=>i.date && i.amount>0);
   if(editingId){
     const e = entries.find(x=>x.id===editingId);
-    if(e) Object.assign(e, {type:selectedType, name, amount, date, due, note, installments:cleanedInstallments});
+    if(e) Object.assign(e, {type:selectedType, name, amount, date, due, note, currency:selectedCurrency, installments:cleanedInstallments});
   } else {
-    entries.push({ id:genId(), type:selectedType, name, amount, date, due, note, paid:false, installments:cleanedInstallments });
+    entries.push({ id:genId(), type:selectedType, name, amount, date, due, note, currency:selectedCurrency, paid:false, installments:cleanedInstallments });
   }
   save();
   overlay.classList.remove('open');
