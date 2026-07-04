@@ -96,7 +96,8 @@
 
   .entry{
     padding:16px 0; border-bottom:1px solid var(--line);
-    display:flex; flex-direction:column; gap:8px;
+    display:flex; flex-direction:column; gap:6px;
+    cursor:pointer;
   }
   .entry-top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
   .entry-name{
@@ -129,6 +130,7 @@
     display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
   .entry.is-paid .entry-name, .entry.is-paid .entry-amount{ opacity:.4; }
+  .inst-caption{ font-size:10.5px; color:var(--muted); }
 
   .fab{
     position:fixed; bottom:0; left:50%; transform:translateX(-50%);
@@ -157,6 +159,7 @@
   .sheet h2{ font-family:'Fraunces',serif; font-weight:500; font-style:italic; font-size:21px; margin:0 0 18px;}
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px;}
+  .field .hint{ display:block; font-size:10.5px; color:var(--muted); margin-top:5px; text-transform:none; letter-spacing:0; }
   .field input, .field textarea, .field select{
     width:100%; font-family:'JetBrains Mono',monospace; font-size:14px;
     padding:11px 12px; border:1px solid var(--line); border-radius:8px;
@@ -178,6 +181,7 @@
   }
   .btn-cancel{ background:var(--paper-2); color:var(--muted); }
   .btn-save{ background:var(--ink); color:var(--paper); }
+  .btn-delete-entry{ background:var(--debt-soft); color:var(--debt); }
   .rate-row{ display:flex; gap:8px; align-items:flex-end; }
   .rate-row .field{ flex:1; margin-bottom:0; }
   .btn-fetch{
@@ -188,6 +192,11 @@
   .rate-status{ font-size:10.5px; color:var(--muted); margin-top:8px; line-height:1.5; }
   .rate-status.err{ color:var(--debt); }
   .rate-status.ok{ color:var(--credit); }
+
+  .installment-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .installment-row input[type=date]{ flex:1.3; }
+  .installment-row input[type=number]{ flex:1; }
+  .installment-row .icon-btn{ flex:none; }
 </style>
 </head>
 <body>
@@ -238,6 +247,7 @@
     <div class="field">
       <label>Tutar (₺)</label>
       <input type="number" id="fAmount" inputmode="decimal" placeholder="0">
+      <span class="hint">Taksit oluşturursan bu, her taksitte ödenecek miktar olarak kullanılır.</span>
     </div>
     <div class="field">
       <label>Tarih</label>
@@ -251,9 +261,33 @@
       <label>Not (opsiyonel)</label>
       <textarea id="fNote" placeholder="ek bilgi..."></textarea>
     </div>
+    <div class="field">
+      <label>Geri Ödeme Planı (opsiyonel)</label>
+      <div class="rate-row" style="margin-bottom:8px;">
+        <div class="field" style="flex:1;">
+          <label>Taksit Sayısı</label>
+          <input type="number" id="planCount" min="1" placeholder="örn. 6">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Aralık</label>
+          <select id="planInterval">
+            <option value="month">Aylık</option>
+            <option value="14">2 Haftalık</option>
+            <option value="7">Haftalık</option>
+          </select>
+        </div>
+      </div>
+      <button type="button" id="genPlan" class="btn-fetch" style="width:100%; margin-bottom:6px;">Planı Otomatik Oluştur</button>
+      <div id="planStatus" style="font-size:11px; color:var(--muted); margin-bottom:10px; min-height:14px;"></div>
+      <div id="installmentList"></div>
+      <button type="button" id="addInstallment" class="btn-fetch">+ Taksit Ekle (elle)</button>
+    </div>
     <div class="sheet-actions">
       <button class="btn-cancel" id="btnCancel">Vazgeç</button>
       <button class="btn-save" id="btnSave">Kaydet</button>
+    </div>
+    <div class="sheet-actions" id="deleteRow" style="display:none;">
+      <button class="btn-delete-entry" id="btnDeleteEntry" style="width:100%;">Kaydı Sil</button>
     </div>
   </div>
 </div>
@@ -282,7 +316,11 @@ const FX_KEY = 'borc-alacak-defteri-kur';
 let entries = [];
 let currentFilter = 'all';
 let selectedType = 'debt';
+let editingId = null;
+let currentInstallments = [];
 let fx = { currency:'USD', rate:null, updatedAt:null, auto:false };
+
+function genId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 function load(){
   try{
@@ -310,9 +348,43 @@ function fmtDate(d){
   const dt = new Date(d+'T00:00:00');
   return dt.toLocaleDateString('tr-TR', {day:'2-digit', month:'short'});
 }
-function isOverdue(e){
-  if(!e.due || e.paid) return false;
-  return new Date(e.due+'T00:00:00') < new Date(new Date().toDateString());
+
+function remainingAmount(e){
+  if(e.installments && e.installments.length){
+    return e.installments.filter(i=>!i.paid).reduce((s,i)=>s+Number(i.amount),0);
+  }
+  return e.paid ? 0 : Number(e.amount);
+}
+
+function buildDisplayItems(){
+  const items = [];
+  entries.forEach(e=>{
+    if(e.installments && e.installments.length){
+      const sorted = [...e.installments].sort((a,b)=> new Date(a.date) - new Date(b.date));
+      sorted.forEach((it, idx)=>{
+        items.push({
+          kind:'installment', entryId:e.id, instId:it.id,
+          type:e.type, parentName:e.name,
+          date:it.date, amount:it.amount, paid:it.paid,
+          index: idx+1, total: sorted.length
+        });
+      });
+    } else {
+      items.push({
+        kind:'entry', entryId:e.id,
+        type:e.type, name:e.name, date:e.date, due:e.due,
+        amount:e.amount, paid:e.paid, note:e.note
+      });
+    }
+  });
+  return items;
+}
+function itemSortKey(item){ return item.kind==='entry' ? (item.due || item.date) : item.date; }
+function isOverdueItem(item){
+  if(item.paid) return false;
+  const cmp = item.kind==='entry' ? item.due : item.date;
+  if(!cmp) return false;
+  return new Date(cmp+'T00:00:00') < new Date(new Date().toDateString());
 }
 
 function renderHeader(){
@@ -320,9 +392,9 @@ function renderHeader(){
   document.getElementById('today').textContent = today.toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
   let debtTotal = 0, creditTotal = 0;
-  entries.filter(e=>!e.paid).forEach(e=>{
-    if(e.type==='debt') debtTotal += Number(e.amount);
-    else creditTotal += Number(e.amount);
+  entries.forEach(e=>{
+    const rem = remainingAmount(e);
+    if(e.type==='debt') debtTotal += rem; else creditTotal += rem;
   });
   const net = creditTotal - debtTotal;
   const netEl = document.getElementById('netValue');
@@ -339,50 +411,76 @@ function renderHeader(){
 
 function renderList(){
   const list = document.getElementById('list');
-  let filtered = entries;
-  if(currentFilter==='debt') filtered = entries.filter(e=>e.type==='debt');
-  else if(currentFilter==='credit') filtered = entries.filter(e=>e.type==='credit');
-  else if(currentFilter==='pending') filtered = entries.filter(e=>!e.paid);
-  else if(currentFilter==='paid') filtered = entries.filter(e=>e.paid);
+  let items = buildDisplayItems();
 
-  filtered = [...filtered].sort((a,b)=> new Date(b.date) - new Date(a.date));
+  if(currentFilter==='debt') items = items.filter(i=>i.type==='debt');
+  else if(currentFilter==='credit') items = items.filter(i=>i.type==='credit');
+  else if(currentFilter==='pending') items = items.filter(i=>!i.paid);
 
-  if(filtered.length===0){
+  items = items.sort((a,b)=> new Date(itemSortKey(a)) - new Date(itemSortKey(b)));
+
+  if(items.length===0){
     list.innerHTML = `<div class="empty"><div class="glyph">boş sayfa</div><p>Henüz kayıt yok.<br>Aşağıdaki düğmeyle ilk borç ya da geliri ekle.</p></div>`;
     return;
   }
 
-  list.innerHTML = filtered.map(e=>{
-    const overdue = isOverdue(e);
-    let badge = e.paid
+  list.innerHTML = items.map(item=>{
+    const overdue = isOverdueItem(item);
+    const badge = item.paid
       ? '<span class="badge paid">kapandı</span>'
       : overdue
         ? '<span class="badge overdue">vadesi geçti</span>'
-        : `<span class="badge ${e.type}">${e.type==='debt'?'borç':'gelir'}</span>`;
-    const fxTxt = fmtFx(e.amount);
-    return `
-    <div class="entry ${e.paid?'is-paid':''}" data-id="${e.id}">
-      <div class="entry-top">
-        <div class="entry-name">${escapeHtml(e.name)}</div>
-        <div class="leader"></div>
-        <div class="amount-block">
-          <div class="entry-amount ${e.type}">${fmtMoney(e.amount)}</div>
-          ${fxTxt ? `<div class="entry-fx">≈ ${fxTxt}</div>` : ''}
+        : `<span class="badge ${item.type}">${item.type==='debt'?'borç':'gelir'}</span>`;
+    const fxTxt = fmtFx(item.amount);
+
+    if(item.kind==='entry'){
+      return `
+      <div class="entry ${item.paid?'is-paid':''}" onclick="openEdit('${item.entryId}')">
+        <div class="entry-top">
+          <div class="entry-name">${escapeHtml(item.name)}</div>
+          <div class="leader"></div>
+          <div class="amount-block">
+            <div class="entry-amount ${item.type}">${fmtMoney(item.amount)}</div>
+            ${fxTxt ? `<div class="entry-fx">≈ ${fxTxt}</div>` : ''}
+          </div>
         </div>
-      </div>
-      <div class="entry-meta">
-        <div class="entry-info">
-          ${badge}
-          <span>${fmtDate(e.date)}</span>
-          ${e.due ? `<span>· vade ${fmtDate(e.due)}</span>` : ''}
+        <div class="entry-meta">
+          <div class="entry-info">
+            ${badge}
+            <span>${fmtDate(item.date)}</span>
+            ${item.due ? `<span>· vade ${fmtDate(item.due)}</span>` : ''}
+          </div>
+          <div class="entry-actions">
+            <button class="icon-btn" onclick="event.stopPropagation(); togglePaid('${item.entryId}')" title="Ödendi/Bekliyor">${item.paid ? '↺' : '✓'}</button>
+            <button class="icon-btn" onclick="event.stopPropagation(); removeEntry('${item.entryId}')" title="Sil">×</button>
+          </div>
         </div>
-        <div class="entry-actions">
-          <button class="icon-btn" onclick="togglePaid('${e.id}')" title="Ödendi/Bekliyor">${e.paid ? '↺' : '✓'}</button>
-          <button class="icon-btn" onclick="removeEntry('${e.id}')" title="Sil">×</button>
+        ${item.note ? `<div style="font-size:11px;color:var(--muted);">${escapeHtml(item.note)}</div>` : ''}
+      </div>`;
+    } else {
+      return `
+      <div class="entry ${item.paid?'is-paid':''}" onclick="openEdit('${item.entryId}')">
+        <div class="entry-top">
+          <div class="entry-name">Taksit ${item.index}/${item.total}</div>
+          <div class="leader"></div>
+          <div class="amount-block">
+            <div class="entry-amount ${item.type}">${fmtMoney(item.amount)}</div>
+            ${fxTxt ? `<div class="entry-fx">≈ ${fxTxt}</div>` : ''}
+          </div>
         </div>
-      </div>
-      ${e.note ? `<div style="font-size:11px;color:var(--muted);">${escapeHtml(e.note)}</div>` : ''}
-    </div>`;
+        <div class="entry-meta">
+          <div class="entry-info">
+            ${badge}
+            <span>${fmtDate(item.date)}</span>
+          </div>
+          <div class="entry-actions">
+            <button class="icon-btn" onclick="event.stopPropagation(); toggleInstallmentPaid('${item.entryId}','${item.instId}')" title="Ödendi/Bekliyor">${item.paid ? '↺' : '✓'}</button>
+            <button class="icon-btn" onclick="event.stopPropagation(); removeInstallment('${item.entryId}','${item.instId}')" title="Sil">×</button>
+          </div>
+        </div>
+        <div class="inst-caption">↳ ${escapeHtml(item.parentName)}</div>
+      </div>`;
+    }
   }).join('');
 }
 
@@ -402,6 +500,18 @@ function removeEntry(id){
   entries = entries.filter(x=>x.id!==id);
   save(); render();
 }
+function toggleInstallmentPaid(entryId, instId){
+  const e = entries.find(x=>x.id===entryId);
+  if(!e) return;
+  const it = (e.installments||[]).find(x=>x.id===instId);
+  if(it){ it.paid = !it.paid; save(); render(); }
+}
+function removeInstallment(entryId, instId){
+  const e = entries.find(x=>x.id===entryId);
+  if(!e) return;
+  e.installments = (e.installments||[]).filter(x=>x.id!==instId);
+  save(); render();
+}
 
 document.getElementById('tabs').addEventListener('click', (ev)=>{
   const btn = ev.target.closest('.tab');
@@ -412,17 +522,105 @@ document.getElementById('tabs').addEventListener('click', (ev)=>{
   renderList();
 });
 
+/* --- Ekle / Düzenle sheet --- */
 const overlay = document.getElementById('overlay');
-document.getElementById('openAdd').addEventListener('click', ()=>{
+
+function renderInstallmentEditor(){
+  const wrap = document.getElementById('installmentList');
+  if(currentInstallments.length===0){
+    wrap.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Henüz taksit eklenmedi.</div>';
+    return;
+  }
+  wrap.innerHTML = currentInstallments.map((it,idx)=>`
+    <div class="installment-row" data-idx="${idx}">
+      <input type="date" class="inst-date" value="${it.date||''}">
+      <input type="number" class="inst-amount" placeholder="Tutar" value="${it.amount||''}">
+      <button type="button" class="icon-btn inst-del">×</button>
+    </div>
+  `).join('');
+}
+document.getElementById('installmentList').addEventListener('input', (ev)=>{
+  const row = ev.target.closest('.installment-row');
+  if(!row) return;
+  const idx = +row.dataset.idx;
+  if(ev.target.classList.contains('inst-date')) currentInstallments[idx].date = ev.target.value;
+  if(ev.target.classList.contains('inst-amount')) currentInstallments[idx].amount = parseFloat(ev.target.value)||0;
+});
+document.getElementById('installmentList').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.inst-del');
+  if(!btn) return;
+  const row = btn.closest('.installment-row');
+  const idx = +row.dataset.idx;
+  currentInstallments.splice(idx,1);
+  renderInstallmentEditor();
+});
+document.getElementById('addInstallment').addEventListener('click', ()=>{
+  currentInstallments.push({id:genId(), date:new Date().toISOString().slice(0,10), amount:0, paid:false});
+  renderInstallmentEditor();
+});
+document.getElementById('genPlan').addEventListener('click', ()=>{
+  const statusEl = document.getElementById('planStatus');
+  const perAmount = parseFloat(document.getElementById('fAmount').value);
+  const count = parseInt(document.getElementById('planCount').value);
+  const intervalVal = document.getElementById('planInterval').value;
+  const startDateStr = document.getElementById('fDate').value || new Date().toISOString().slice(0,10);
+  statusEl.style.color = 'var(--debt)';
+  if(!perAmount || perAmount<=0){ statusEl.textContent = 'Önce "Tutar" alanına her taksitte ödenecek miktarı gir.'; return; }
+  if(!count || count<1){ statusEl.textContent = 'Taksit sayısını gir (örn. 6).'; return; }
+  if(currentInstallments.length>0 && !confirm('Mevcut taksitlerin üzerine yazılacak. Devam edilsin mi?')){
+    statusEl.textContent = 'İptal edildi, mevcut taksitler korundu.';
+    return;
+  }
+  const startDate = new Date(startDateStr + 'T00:00:00');
+  currentInstallments = [];
+  for(let i=0; i<count; i++){
+    const d = new Date(startDate);
+    if(intervalVal === 'month'){ d.setMonth(d.getMonth() + i); }
+    else { d.setDate(d.getDate() + parseInt(intervalVal) * i); }
+    currentInstallments.push({ id:genId(), date:d.toISOString().slice(0,10), amount:perAmount, paid:false });
+  }
+  const total = Math.round(perAmount * count * 100) / 100;
+  document.getElementById('fAmount').value = total;
+  renderInstallmentEditor();
+  statusEl.style.color = 'var(--credit)';
+  statusEl.textContent = `${count} taksit × ${fmtMoney(perAmount)} = ${fmtMoney(total)} toplam oluşturuldu ✓`;
+});
+
+function openAddSheet(){
+  editingId = null;
+  document.getElementById('sheetTitle').textContent = 'Yeni Kayıt';
   document.getElementById('fName').value='';
   document.getElementById('fAmount').value='';
   document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('fDue').value='';
   document.getElementById('fNote').value='';
+  document.getElementById('deleteRow').style.display='none';
   selectedType='debt';
   updateTypeButtons();
+  currentInstallments = [];
+  document.getElementById('planStatus').textContent = '';
+  renderInstallmentEditor();
   overlay.classList.add('open');
-});
+}
+function openEdit(id){
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  editingId = id;
+  document.getElementById('sheetTitle').textContent = 'Kaydı Düzenle';
+  document.getElementById('fName').value = e.name;
+  document.getElementById('fAmount').value = e.amount;
+  document.getElementById('fDate').value = e.date;
+  document.getElementById('fDue').value = e.due || '';
+  document.getElementById('fNote').value = e.note || '';
+  document.getElementById('deleteRow').style.display='flex';
+  selectedType = e.type;
+  updateTypeButtons();
+  currentInstallments = (e.installments||[]).map(i=>({...i}));
+  document.getElementById('planStatus').textContent = '';
+  renderInstallmentEditor();
+  overlay.classList.add('open');
+}
+document.getElementById('openAdd').addEventListener('click', openAddSheet);
 document.getElementById('btnCancel').addEventListener('click', ()=> overlay.classList.remove('open'));
 overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) overlay.classList.remove('open'); });
 
@@ -447,13 +645,23 @@ document.getElementById('btnSave').addEventListener('click', ()=>{
     alert('Kişi adı ve geçerli bir tutar gir.');
     return;
   }
-  entries.push({
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    type: selectedType, name, amount, date, due, note, paid:false
-  });
+  const cleanedInstallments = currentInstallments.filter(i=>i.date && i.amount>0);
+  if(editingId){
+    const e = entries.find(x=>x.id===editingId);
+    if(e) Object.assign(e, {type:selectedType, name, amount, date, due, note, installments:cleanedInstallments});
+  } else {
+    entries.push({ id:genId(), type:selectedType, name, amount, date, due, note, paid:false, installments:cleanedInstallments });
+  }
   save();
   overlay.classList.remove('open');
   render();
+});
+document.getElementById('btnDeleteEntry').addEventListener('click', ()=>{
+  if(!editingId) return;
+  if(confirm('Bu kayıt silinsin mi?')){
+    removeEntry(editingId);
+    overlay.classList.remove('open');
+  }
 });
 
 /* --- Döviz ayarları --- */
