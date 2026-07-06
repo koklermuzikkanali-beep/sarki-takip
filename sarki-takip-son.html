@@ -28,9 +28,12 @@
   .stat .l{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);margin-top:5px;}
   .spl .n{color:var(--pl);} .shz .n{color:var(--hz);} .syk .n{color:var(--yk);}
 
-  .tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--line);padding:0 20px;}
-  .tab{font-family:'JetBrains Mono',monospace;font-size:11px;padding:13px 12px;border:none;border-bottom:2px solid transparent;color:var(--ink3);background:transparent;white-space:nowrap;cursor:pointer;flex-shrink:0;}
+  .tab-group{border-bottom:1px solid var(--line);}
+  .tab-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink3);padding:8px 20px 0;}
+  .tabs{display:flex;overflow-x:auto;padding:0 20px;}
+  .tab{font-family:'JetBrains Mono',monospace;font-size:11px;padding:10px 12px;border:none;border-bottom:2px solid transparent;color:var(--ink3);background:transparent;white-space:nowrap;cursor:pointer;flex-shrink:0;}
   .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600;}
+  .tab-group:last-child{border-bottom:1px solid var(--line);}
 
   #list{padding:16px 20px 0;display:flex;flex-direction:column;gap:12px;}
 
@@ -76,9 +79,9 @@
   .pform{border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:14px;}
   .pform-row{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid var(--line);gap:8px;}
   .pform-row:last-child{border-bottom:none;}
-  .pform-label{font-weight:500;font-size:13.5px;flex-shrink:0;}
+  .pform-label{font-weight:500;font-size:13px;flex-shrink:0;min-width:80px;}
   .pform-status{display:flex;gap:5px;}
-  .sopt{font-family:'JetBrains Mono',monospace;font-size:9.5px;padding:5px 8px;border-radius:2px;border:1px solid var(--line2);color:var(--ink3);cursor:pointer;background:var(--white);}
+  .sopt{font-family:'JetBrains Mono',monospace;font-size:9.5px;padding:5px 7px;border-radius:2px;border:1px solid var(--line2);color:var(--ink3);cursor:pointer;background:var(--white);}
   .sopt.sel-pl{border-color:var(--pl);color:var(--pl);background:rgba(74,111,165,0.08);font-weight:600;}
   .sopt.sel-hz{border-color:var(--hz);color:var(--hz);background:rgba(176,125,42,0.08);font-weight:600;}
   .sopt.sel-yk{border-color:var(--yk);color:var(--yk);background:rgba(58,125,90,0.08);font-weight:600;}
@@ -106,12 +109,27 @@
   <div class="stat syk"><div class="n" id="cYk">0</div><div class="l">Yüklendi</div></div>
 </div>
 
-<div class="tabs" id="tabs">
-  <button class="tab active" data-f="hepsi">Hepsi</button>
-  <button class="tab" data-f="spotify">Spotify</button>
-  <button class="tab" data-f="youtube">YouTube</button>
-  <button class="tab" data-f="shorts">YT Shorts</button>
-  <button class="tab" data-f="reels">Reels</button>
+<!-- Platform filtresi -->
+<div class="tab-group">
+  <div class="tab-label">Platform</div>
+  <div class="tabs" id="tabsPlatform">
+    <button class="tab active" data-p="hepsi">Hepsi</button>
+    <button class="tab" data-p="spotify">Spotify</button>
+    <button class="tab" data-p="youtube">YouTube</button>
+    <button class="tab" data-p="shorts">YT Shorts</button>
+    <button class="tab" data-p="reels">Reels</button>
+  </div>
+</div>
+
+<!-- Durum filtresi -->
+<div class="tab-group">
+  <div class="tab-label">Durum</div>
+  <div class="tabs" id="tabsDurum">
+    <button class="tab active" data-d="hepsi">Hepsi</button>
+    <button class="tab" data-d="planlanan">Planlanan</button>
+    <button class="tab" data-d="hazirlaniyor">Hazırlanıyor</button>
+    <button class="tab" data-d="yuklendi">Yüklendi</button>
+  </div>
 </div>
 
 <div id="list"></div>
@@ -187,10 +205,9 @@ const SCLASS = {planlanan:'bpl',hazirlaniyor:'bhz',yuklendi:'byk'};
 const OCLASS = {planlanan:'sel-pl',hazirlaniyor:'sel-hz',yuklendi:'sel-yk'};
 
 let tracks = [];
-let activeFilter = 'hepsi';
+let filterP = 'hepsi'; // platform filtresi
+let filterD = 'hepsi'; // durum filtresi
 let editId = null;
-
-// Her platform için bağımsız durum tutulur
 let formStatus = {spotify:'planlanan',youtube:'planlanan',shorts:'planlanan',reels:'planlanan'};
 
 const $list = document.getElementById('list');
@@ -199,7 +216,7 @@ const $sheet = document.getElementById('sheet');
 const $toast = document.getElementById('toast');
 
 function toast(msg){
-  $toast.textContent = msg;
+  $toast.textContent=msg;
   $toast.classList.add('show');
   setTimeout(()=>$toast.classList.remove('show'),1600);
 }
@@ -210,63 +227,60 @@ function fmt(iso){
 }
 
 function load(){
-  try { tracks = JSON.parse(localStorage.getItem(KEY)||'[]'); }
-  catch(e){ tracks = []; }
+  try{ tracks=JSON.parse(localStorage.getItem(KEY)||'[]'); }
+  catch(e){ tracks=[]; }
   render();
 }
 
-function save(){
-  localStorage.setItem(KEY, JSON.stringify(tracks));
-}
+function save(){ localStorage.setItem(KEY,JSON.stringify(tracks)); }
 
 function countPlatformStatus(status){
-  // Kaç platform-durum çifti bu statüde
-  let n = 0;
-  tracks.forEach(t=>{
-    PLATFORMS.forEach(p=>{
-      if(t.platforms && t.platforms[p]===status) n++;
-    });
-  });
+  let n=0;
+  tracks.forEach(t=>{ PLATFORMS.forEach(p=>{ if(t.platforms&&t.platforms[p]===status) n++; }); });
   return n;
 }
 
 function render(){
-  // İstatistikler: platform bazında toplam durum sayısı
   document.getElementById('cPl').textContent = countPlatformStatus('planlanan');
   document.getElementById('cHz').textContent = countPlatformStatus('hazirlaniyor');
   document.getElementById('cYk').textContent = countPlatformStatus('yuklendi');
 
-  // Filtre: "hepsi" = tüm şarkılar, platform filtresi = o platformu içeren şarkılar
-  let filtered;
-  if(activeFilter==='hepsi'){
-    filtered = tracks;
-  } else {
-    filtered = tracks.filter(t => t.platforms && t.platforms[activeFilter]);
-  }
+  // Önce hangi şarkılar görünecek bul
+  // Sonra her şarkı için hangi platform satırları gösterilecek bul
+  const results = [];
 
-  const sorted = [...filtered].sort((a,b)=>{
-    if(!a.date&&!b.date) return 0;
-    if(!a.date) return 1; if(!b.date) return -1;
-    return new Date(b.date)-new Date(a.date);
+  tracks.forEach(t=>{
+    // Hangi platformlar bu filtrelerle eşleşiyor?
+    const matchingPlatforms = PLATFORMS.filter(p=>{
+      if(!t.platforms || !t.platforms[p]) return false;
+      const platformOk = filterP==='hepsi' || filterP===p;
+      const durumOk = filterD==='hepsi' || t.platforms[p]===filterD;
+      return platformOk && durumOk;
+    });
+
+    if(matchingPlatforms.length > 0){
+      results.push({track: t, platforms: matchingPlatforms});
+    }
   });
 
-  if(!sorted.length){
-    $list.innerHTML = `<div class="empty"><div class="mark">—</div><p>${activeFilter==='hepsi'?'Henüz track yok. + ile ilk şarkını ekle.':'Bu platformda track yok.'}</p></div>`;
+  // Tarihe göre sırala
+  results.sort((a,b)=>{
+    const ad=a.track.date, bd=b.track.date;
+    if(!ad&&!bd) return 0;
+    if(!ad) return 1; if(!bd) return -1;
+    return new Date(bd)-new Date(ad);
+  });
+
+  if(!results.length){
+    $list.innerHTML=`<div class="empty"><div class="mark">—</div><p>Bu filtreye uyan track yok.</p></div>`;
     return;
   }
 
-  $list.innerHTML = sorted.map(t=>{
-    // Sadece o filtrede görünen platformu öne çıkar, yoksa hepsini göster
-    const pRows = PLATFORMS
-      .filter(p => activeFilter==='hepsi' || activeFilter===p)
-      .filter(p => t.platforms && t.platforms[p])
-      .map(p=>{
-        const s = t.platforms[p];
-        return `<tr>
-          <td>${PLABEL[p]}</td>
-          <td><span class="badge ${SCLASS[s]}">${SLABEL[s]}</span></td>
-        </tr>`;
-      }).join('');
+  $list.innerHTML = results.map(({track:t, platforms:ps})=>{
+    const pRows = ps.map(p=>{
+      const s = t.platforms[p];
+      return `<tr><td>${PLABEL[p]}</td><td><span class="badge ${SCLASS[s]}">${SLABEL[s]}</span></td></tr>`;
+    }).join('');
 
     return `<div class="card">
       <div class="card-name">${esc(t.name)}</div>
@@ -281,48 +295,35 @@ function render(){
   }).join('');
 }
 
-function esc(s){
-  const d=document.createElement('div');
-  d.textContent=s;
-  return d.innerHTML;
-}
+function esc(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
 
-// Form: platform seçici butonları güncelle
 function refreshFormUI(){
   PLATFORMS.forEach(p=>{
-    const row = document.querySelector(`#pform [data-p="${p}"]`);
+    const row=document.querySelector(`#pform [data-p="${p}"]`);
     if(!row) return;
     row.querySelectorAll('.sopt').forEach(btn=>{
       btn.classList.remove('sel-pl','sel-hz','sel-yk');
-      if(btn.dataset.s === formStatus[p]){
-        btn.classList.add(OCLASS[formStatus[p]]);
-      }
+      if(btn.dataset.s===formStatus[p]) btn.classList.add(OCLASS[formStatus[p]]);
     });
   });
 }
 
-// Platform buton tıklamaları
 document.querySelectorAll('#pform .sopt').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    const p = btn.closest('[data-p]').dataset.p;
-    formStatus[p] = btn.dataset.s;
+    const p=btn.closest('[data-p]').dataset.p;
+    formStatus[p]=btn.dataset.s;
     refreshFormUI();
   });
 });
 
 function openSheet(track){
-  editId = track ? track.id : null;
-  document.getElementById('sheetTitle').textContent = track ? 'Track Düzenle' : 'Yeni Track';
-  document.getElementById('fName').value = track ? track.name : '';
-  document.getElementById('fDate').value = track ? (track.date||'') : '';
-  document.getElementById('fNote').value = track ? (track.note||'') : '';
-
-  // Her platformun durumunu ayrı ayrı yükle
-  PLATFORMS.forEach(p=>{
-    formStatus[p] = (track && track.platforms && track.platforms[p]) ? track.platforms[p] : 'planlanan';
-  });
+  editId=track?track.id:null;
+  document.getElementById('sheetTitle').textContent=track?'Track Düzenle':'Yeni Track';
+  document.getElementById('fName').value=track?track.name:'';
+  document.getElementById('fDate').value=track?(track.date||''):'';
+  document.getElementById('fNote').value=track?(track.note||''):'';
+  PLATFORMS.forEach(p=>{ formStatus[p]=(track&&track.platforms&&track.platforms[p])||'planlanan'; });
   refreshFormUI();
-
   $overlay.classList.add('open');
   $sheet.classList.add('open');
   setTimeout(()=>document.getElementById('fName').focus(),300);
@@ -331,7 +332,7 @@ function openSheet(track){
 function closeSheet(){
   $overlay.classList.remove('open');
   $sheet.classList.remove('open');
-  editId = null;
+  editId=null;
 }
 
 document.getElementById('addBtn').addEventListener('click',()=>openSheet(null));
@@ -339,35 +340,39 @@ document.getElementById('cancelBtn').addEventListener('click',closeSheet);
 $overlay.addEventListener('click',closeSheet);
 
 document.getElementById('saveBtn').addEventListener('click',()=>{
-  const name = document.getElementById('fName').value.trim();
+  const name=document.getElementById('fName').value.trim();
   if(!name){ toast('Şarkı adı boş olamaz'); return; }
-  const date = document.getElementById('fDate').value;
-  const note = document.getElementById('fNote').value.trim();
-
-  // Her platformun durumunu ayrı ayrı kaydet
-  const platforms = {};
-  PLATFORMS.forEach(p=>{ platforms[p] = formStatus[p]; });
+  const date=document.getElementById('fDate').value;
+  const note=document.getElementById('fNote').value.trim();
+  const platforms={};
+  PLATFORMS.forEach(p=>{ platforms[p]=formStatus[p]; });
 
   if(editId){
-    const i = tracks.findIndex(t=>t.id===editId);
-    if(i>-1) tracks[i] = {...tracks[i], name, date, note, platforms};
+    const i=tracks.findIndex(t=>t.id===editId);
+    if(i>-1) tracks[i]={...tracks[i],name,date,note,platforms};
     toast('Güncellendi');
   } else {
-    tracks.push({
-      id: 't'+Date.now()+Math.random().toString(36).slice(2,6),
-      name, date, note, platforms
-    });
+    tracks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name,date,note,platforms});
     toast('Eklendi');
   }
   save(); render(); closeSheet();
 });
 
-document.getElementById('tabs').addEventListener('click',e=>{
-  const t = e.target.closest('.tab');
-  if(!t) return;
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+// Platform sekme tıklamaları
+document.getElementById('tabsPlatform').addEventListener('click',e=>{
+  const t=e.target.closest('.tab'); if(!t) return;
+  document.querySelectorAll('#tabsPlatform .tab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
-  activeFilter = t.dataset.f;
+  filterP=t.dataset.p;
+  render();
+});
+
+// Durum sekme tıklamaları
+document.getElementById('tabsDurum').addEventListener('click',e=>{
+  const t=e.target.closest('.tab'); if(!t) return;
+  document.querySelectorAll('#tabsDurum .tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  filterD=t.dataset.d;
   render();
 });
 
