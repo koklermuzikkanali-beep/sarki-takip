@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Defteri</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root{
+    --bg:#f7f5f0;--white:#fff;--line:#e2dbd0;--line2:#ccc4b0;
+    --ink:#252018;--ink2:#6b6354;--ink3:#a89d83;
+    --pl:#4a6fa5;--hz:#b07d2a;--yk:#3a7d5a;--danger:#9e3d30;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:100px;}
+
+  header{padding:28px 20px 20px;border-bottom:1px solid var(--line);}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;}
+  h1{font-family:'Fraunces',serif;font-weight:700;font-size:34px;margin:0;line-height:1.05;}
+  .sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);margin-top:9px;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--line);}
+  .stat{padding:15px 8px;text-align:center;border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat .n{font-family:'Fraunces',serif;font-weight:700;font-size:24px;line-height:1;}
+  .stat .l{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);margin-top:5px;}
+  .spl .n{color:var(--pl);} .shz .n{color:var(--hz);} .syk .n{color:var(--yk);}
+
+  .tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--line);padding:0 20px;}
+  .tab{font-family:'JetBrains Mono',monospace;font-size:11px;padding:13px 12px;border:none;border-bottom:2px solid transparent;color:var(--ink3);background:transparent;white-space:nowrap;cursor:pointer;flex-shrink:0;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600;}
+
+  #list{padding:16px 20px 0;display:flex;flex-direction:column;gap:12px;}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:4px;padding:15px;}
+  .card-name{font-family:'Fraunces',serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;margin-bottom:4px;}
+  .card-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink3);margin-bottom:12px;}
+
+  .ptable{width:100%;border-collapse:collapse;margin-bottom:4px;}
+  .ptable tr{border-top:1px solid var(--line);}
+  .ptable td{padding:8px 0;font-size:13px;}
+  .ptable td:first-child{color:var(--ink2);font-weight:500;width:110px;}
+  .ptable td:last-child{text-align:right;}
+  .badge{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;padding:3px 8px;border-radius:2px;}
+  .bpl{background:rgba(74,111,165,0.1);color:var(--pl);}
+  .bhz{background:rgba(176,125,42,0.1);color:var(--hz);}
+  .byk{background:rgba(58,125,90,0.1);color:var(--yk);}
+
+  .card-note{font-size:13px;color:var(--ink2);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);line-height:1.5;}
+  .card-actions{display:flex;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .mini-btn{font-family:'JetBrains Mono',monospace;font-size:10px;padding:6px 11px;border-radius:2px;border:1px solid var(--line2);background:transparent;color:var(--ink2);cursor:pointer;}
+  .mini-btn.del{color:var(--danger);border-color:rgba(158,61,48,0.3);}
+
+  .empty{text-align:center;padding:60px 20px;color:var(--ink3);}
+  .empty .mark{font-family:'Fraunces',serif;font-size:32px;color:var(--line2);margin-bottom:10px;}
+  .empty p{font-size:13.5px;line-height:1.5;max-width:240px;margin:0 auto;}
+
+  .fab{position:fixed;bottom:24px;right:20px;width:54px;height:54px;border-radius:50%;background:var(--ink);color:var(--bg);border:none;font-size:26px;box-shadow:0 6px 18px rgba(37,32,24,0.22);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:30;}
+  .fab:active{transform:scale(0.93);}
+
+  .overlay{position:fixed;inset:0;background:rgba(37,32,24,0.3);z-index:40;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+  .overlay.open{opacity:1;pointer-events:auto;}
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--white);border-top:1px solid var(--line);border-radius:14px 14px 0 0;padding:10px 20px 32px;z-index:41;transform:translateY(100%);transition:transform 0.28s cubic-bezier(.32,.72,0,1);max-height:90vh;overflow-y:auto;}
+  .sheet.open{transform:translateY(0);}
+  .handle{width:30px;height:3px;background:var(--line2);border-radius:3px;margin:8px auto 18px;}
+  .sheet h2{font-family:'Fraunces',serif;font-weight:700;font-size:20px;margin:0 0 18px;}
+
+  .field{margin-bottom:15px;}
+  .field label{display:block;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px;}
+  .field input,.field textarea{width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:3px;padding:11px 12px;color:var(--ink);font-family:'Inter',sans-serif;font-size:15px;outline:none;}
+  .field input:focus,.field textarea:focus{border-color:var(--ink);}
+  .field textarea{resize:none;height:54px;font-size:14px;}
+
+  .pform{border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:14px;}
+  .pform-row{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid var(--line);gap:8px;}
+  .pform-row:last-child{border-bottom:none;}
+  .pform-label{font-weight:500;font-size:13.5px;flex-shrink:0;}
+  .pform-status{display:flex;gap:5px;}
+  .sopt{font-family:'JetBrains Mono',monospace;font-size:9.5px;padding:5px 8px;border-radius:2px;border:1px solid var(--line2);color:var(--ink3);cursor:pointer;background:var(--white);}
+  .sopt.sel-pl{border-color:var(--pl);color:var(--pl);background:rgba(74,111,165,0.08);font-weight:600;}
+  .sopt.sel-hz{border-color:var(--hz);color:var(--hz);background:rgba(176,125,42,0.08);font-weight:600;}
+  .sopt.sel-yk{border-color:var(--yk);color:var(--yk);background:rgba(58,125,90,0.08);font-weight:600;}
+
+  .sheet-actions{display:flex;gap:10px;margin-top:6px;}
+  .btn{flex:1;padding:13px;border-radius:3px;border:none;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;}
+  .btn-primary{background:var(--ink);color:var(--bg);}
+  .btn-ghost{background:transparent;color:var(--ink2);border:1px solid var(--line2);}
+
+  .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--ink);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:9px 16px;border-radius:3px;z-index:50;opacity:0;transition:all 0.22s;pointer-events:none;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Yayın Defteri</div>
+  <h1>Track Listesi</h1>
+  <div class="sub" id="dateNow"></div>
+</header>
+
+<div class="stats">
+  <div class="stat spl"><div class="n" id="cPl">0</div><div class="l">Planlanan</div></div>
+  <div class="stat shz"><div class="n" id="cHz">0</div><div class="l">Hazırlanıyor</div></div>
+  <div class="stat syk"><div class="n" id="cYk">0</div><div class="l">Yüklendi</div></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-f="hepsi">Hepsi</button>
+  <button class="tab" data-f="spotify">Spotify</button>
+  <button class="tab" data-f="youtube">YouTube</button>
+  <button class="tab" data-f="shorts">YT Shorts</button>
+  <button class="tab" data-f="reels">Reels</button>
+</div>
+
+<div id="list"></div>
+<button class="fab" id="addBtn">+</button>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet">
+  <div class="handle"></div>
+  <h2 id="sheetTitle">Yeni Track</h2>
+  <div class="field">
+    <label>Şarkı Adı</label>
+    <input type="text" id="fName" placeholder="örn. Gece Yarısı">
+  </div>
+  <div class="field">
+    <label>Tarih</label>
+    <input type="date" id="fDate">
+  </div>
+  <div class="field">
+    <label>Platform Durumları</label>
+    <div class="pform" id="pform">
+      <div class="pform-row" data-p="spotify">
+        <span class="pform-label">Spotify</span>
+        <div class="pform-status">
+          <button class="sopt" data-s="planlanan">Plan.</button>
+          <button class="sopt" data-s="hazirlaniyor">Hazır.</button>
+          <button class="sopt" data-s="yuklendi">Yüklendi</button>
+        </div>
+      </div>
+      <div class="pform-row" data-p="youtube">
+        <span class="pform-label">YouTube</span>
+        <div class="pform-status">
+          <button class="sopt" data-s="planlanan">Plan.</button>
+          <button class="sopt" data-s="hazirlaniyor">Hazır.</button>
+          <button class="sopt" data-s="yuklendi">Yüklendi</button>
+        </div>
+      </div>
+      <div class="pform-row" data-p="shorts">
+        <span class="pform-label">YT Shorts</span>
+        <div class="pform-status">
+          <button class="sopt" data-s="planlanan">Plan.</button>
+          <button class="sopt" data-s="hazirlaniyor">Hazır.</button>
+          <button class="sopt" data-s="yuklendi">Yüklendi</button>
+        </div>
+      </div>
+      <div class="pform-row" data-p="reels">
+        <span class="pform-label">Reels</span>
+        <div class="pform-status">
+          <button class="sopt" data-s="planlanan">Plan.</button>
+          <button class="sopt" data-s="hazirlaniyor">Hazır.</button>
+          <button class="sopt" data-s="yuklendi">Yüklendi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="field">
+    <label>Not (opsiyonel)</label>
+    <textarea id="fNote" placeholder="mix notu, link, fikir..."></textarea>
+  </div>
+  <div class="sheet-actions">
+    <button class="btn btn-ghost" id="cancelBtn">Vazgeç</button>
+    <button class="btn btn-primary" id="saveBtn">Kaydet</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'tracks_son';
+const PLATFORMS = ['spotify','youtube','shorts','reels'];
+const PLABEL = {spotify:'Spotify',youtube:'YouTube',shorts:'YT Shorts',reels:'Reels'};
+const SLABEL = {planlanan:'Planlanan',hazirlaniyor:'Hazırlanıyor',yuklendi:'Yüklendi'};
+const SCLASS = {planlanan:'bpl',hazirlaniyor:'bhz',yuklendi:'byk'};
+const OCLASS = {planlanan:'sel-pl',hazirlaniyor:'sel-hz',yuklendi:'sel-yk'};
+
+let tracks = [];
+let activeFilter = 'hepsi';
+let editId = null;
+
+// Her platform için bağımsız durum tutulur
+let formStatus = {spotify:'planlanan',youtube:'planlanan',shorts:'planlanan',reels:'planlanan'};
+
+const $list = document.getElementById('list');
+const $overlay = document.getElementById('overlay');
+const $sheet = document.getElementById('sheet');
+const $toast = document.getElementById('toast');
+
+function toast(msg){
+  $toast.textContent = msg;
+  $toast.classList.add('show');
+  setTimeout(()=>$toast.classList.remove('show'),1600);
+}
+
+function fmt(iso){
+  if(!iso) return '—';
+  return new Date(iso+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+}
+
+function load(){
+  try { tracks = JSON.parse(localStorage.getItem(KEY)||'[]'); }
+  catch(e){ tracks = []; }
+  render();
+}
+
+function save(){
+  localStorage.setItem(KEY, JSON.stringify(tracks));
+}
+
+function countPlatformStatus(status){
+  // Kaç platform-durum çifti bu statüde
+  let n = 0;
+  tracks.forEach(t=>{
+    PLATFORMS.forEach(p=>{
+      if(t.platforms && t.platforms[p]===status) n++;
+    });
+  });
+  return n;
+}
+
+function render(){
+  // İstatistikler: platform bazında toplam durum sayısı
+  document.getElementById('cPl').textContent = countPlatformStatus('planlanan');
+  document.getElementById('cHz').textContent = countPlatformStatus('hazirlaniyor');
+  document.getElementById('cYk').textContent = countPlatformStatus('yuklendi');
+
+  // Filtre: "hepsi" = tüm şarkılar, platform filtresi = o platformu içeren şarkılar
+  let filtered;
+  if(activeFilter==='hepsi'){
+    filtered = tracks;
+  } else {
+    filtered = tracks.filter(t => t.platforms && t.platforms[activeFilter]);
+  }
+
+  const sorted = [...filtered].sort((a,b)=>{
+    if(!a.date&&!b.date) return 0;
+    if(!a.date) return 1; if(!b.date) return -1;
+    return new Date(b.date)-new Date(a.date);
+  });
+
+  if(!sorted.length){
+    $list.innerHTML = `<div class="empty"><div class="mark">—</div><p>${activeFilter==='hepsi'?'Henüz track yok. + ile ilk şarkını ekle.':'Bu platformda track yok.'}</p></div>`;
+    return;
+  }
+
+  $list.innerHTML = sorted.map(t=>{
+    // Sadece o filtrede görünen platformu öne çıkar, yoksa hepsini göster
+    const pRows = PLATFORMS
+      .filter(p => activeFilter==='hepsi' || activeFilter===p)
+      .filter(p => t.platforms && t.platforms[p])
+      .map(p=>{
+        const s = t.platforms[p];
+        return `<tr>
+          <td>${PLABEL[p]}</td>
+          <td><span class="badge ${SCLASS[s]}">${SLABEL[s]}</span></td>
+        </tr>`;
+      }).join('');
+
+    return `<div class="card">
+      <div class="card-name">${esc(t.name)}</div>
+      <div class="card-date">${fmt(t.date)}</div>
+      <table class="ptable">${pRows}</table>
+      ${t.note?`<div class="card-note">${esc(t.note)}</div>`:''}
+      <div class="card-actions">
+        <button class="mini-btn" onclick="openEdit('${t.id}')">Düzenle</button>
+        <button class="mini-btn del" onclick="del('${t.id}')">Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){
+  const d=document.createElement('div');
+  d.textContent=s;
+  return d.innerHTML;
+}
+
+// Form: platform seçici butonları güncelle
+function refreshFormUI(){
+  PLATFORMS.forEach(p=>{
+    const row = document.querySelector(`#pform [data-p="${p}"]`);
+    if(!row) return;
+    row.querySelectorAll('.sopt').forEach(btn=>{
+      btn.classList.remove('sel-pl','sel-hz','sel-yk');
+      if(btn.dataset.s === formStatus[p]){
+        btn.classList.add(OCLASS[formStatus[p]]);
+      }
+    });
+  });
+}
+
+// Platform buton tıklamaları
+document.querySelectorAll('#pform .sopt').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const p = btn.closest('[data-p]').dataset.p;
+    formStatus[p] = btn.dataset.s;
+    refreshFormUI();
+  });
+});
+
+function openSheet(track){
+  editId = track ? track.id : null;
+  document.getElementById('sheetTitle').textContent = track ? 'Track Düzenle' : 'Yeni Track';
+  document.getElementById('fName').value = track ? track.name : '';
+  document.getElementById('fDate').value = track ? (track.date||'') : '';
+  document.getElementById('fNote').value = track ? (track.note||'') : '';
+
+  // Her platformun durumunu ayrı ayrı yükle
+  PLATFORMS.forEach(p=>{
+    formStatus[p] = (track && track.platforms && track.platforms[p]) ? track.platforms[p] : 'planlanan';
+  });
+  refreshFormUI();
+
+  $overlay.classList.add('open');
+  $sheet.classList.add('open');
+  setTimeout(()=>document.getElementById('fName').focus(),300);
+}
+
+function closeSheet(){
+  $overlay.classList.remove('open');
+  $sheet.classList.remove('open');
+  editId = null;
+}
+
+document.getElementById('addBtn').addEventListener('click',()=>openSheet(null));
+document.getElementById('cancelBtn').addEventListener('click',closeSheet);
+$overlay.addEventListener('click',closeSheet);
+
+document.getElementById('saveBtn').addEventListener('click',()=>{
+  const name = document.getElementById('fName').value.trim();
+  if(!name){ toast('Şarkı adı boş olamaz'); return; }
+  const date = document.getElementById('fDate').value;
+  const note = document.getElementById('fNote').value.trim();
+
+  // Her platformun durumunu ayrı ayrı kaydet
+  const platforms = {};
+  PLATFORMS.forEach(p=>{ platforms[p] = formStatus[p]; });
+
+  if(editId){
+    const i = tracks.findIndex(t=>t.id===editId);
+    if(i>-1) tracks[i] = {...tracks[i], name, date, note, platforms};
+    toast('Güncellendi');
+  } else {
+    tracks.push({
+      id: 't'+Date.now()+Math.random().toString(36).slice(2,6),
+      name, date, note, platforms
+    });
+    toast('Eklendi');
+  }
+  save(); render(); closeSheet();
+});
+
+document.getElementById('tabs').addEventListener('click',e=>{
+  const t = e.target.closest('.tab');
+  if(!t) return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  activeFilter = t.dataset.f;
+  render();
+});
+
+function openEdit(id){ const t=tracks.find(x=>x.id===id); if(t) openSheet(t); }
+function del(id){ tracks=tracks.filter(x=>x.id!==id); save(); render(); toast('Silindi'); }
+
+document.getElementById('dateNow').textContent =
+  new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric',weekday:'long'}).toUpperCase();
+
+load();
+</script>
+</body>
+</html>
