@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index Takip</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:16px}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+input,button{padding:10px;border:1px solid #ccc;border-radius:8px}
+button{cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.progress{height:18px;background:#ddd;border-radius:20px;overflow:hidden}
+.bar{height:100%;background:#4caf50;width:0%}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
+.green{background:#dff5e1}.yellow{background:#fff6cf}.red{background:#ffdede}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>🎯 Index Takip</h2>
+<div class="grid">
+<div><label>Başlangıç</label><br><input type="date" id="start"></div>
+<div><label>Gün Sayısı</label><br><input type="number" id="days" value="30"></div>
+<div><label>Hedef (TL)</label><br><input type="number" id="goal" value="12000"></div>
+</div>
+<br><button onclick="createPlan()">Takvimi Oluştur</button>
+</div>
+
+<div class="card">
+<div id="summary"></div>
+<div class="progress"><div id="bar" class="bar"></div></div>
+</div>
+
+
+
+<div class="card">
+<h3>Günlük Kayıtlar</h3>
+<table id="tbl"></table>
+</div>
+
+<script>
+
+function save(){localStorage.setItem("hedefTakipData",document.getElementById("tbl").innerHTML);}
+function loadSaved(){
+ let s=localStorage.getItem("hedefTakipData");
+ if(s){document.getElementById("tbl").innerHTML=s;}
+}
+
+function createPlan(){
+ const start=new Date(document.getElementById("start").value);
+ const days=parseInt(document.getElementById("days").value);
+ let h='<tr><th>Gün</th><th>Tarih</th><th>Kazanç</th><th>Sabit</th><th>Yeni Ortalama</th></tr>';
+ for(let i=0;i<days;i++){
+   let d=new Date(start); d.setDate(start.getDate()+i);
+   h+=`<tr>
+   <td>${i+1}</td>
+   <td>${d.toLocaleDateString('tr-TR')}</td>
+   <td><input type="number" value="0" onchange="calc()"></td>
+   <td class="fixed"></td>
+   <td class="dyn"></td>
+   </tr>`;
+ }
+ document.getElementById("tbl").innerHTML=h;
+ calc();
+}
+
+function calc(){
+ const goal=+document.getElementById("goal").value;
+ const days=+document.getElementById("days").value;
+ const daily=goal/days;
+ const rows=[...document.querySelectorAll("#tbl tr")].slice(1);
+ let total=0;
+ let real=[]; let ideal=[];
+
+ rows.forEach((r,i)=>{
+   let gain=+(r.querySelector("input")?.value||0);
+   total+=gain;
+
+   let expected=(i+1)*daily;
+   let diff=expected-total;
+   r.querySelector(".fixed").textContent=Math.max(0,daily+diff).toFixed(2)+" TL";
+
+   let remainGoal=Math.max(0,goal-total);
+   let remainDays=Math.max(1, rows.length-(i+1));
+   r.querySelector(".dyn").textContent=(remainGoal/remainDays).toFixed(2)+" TL";
+
+   r.className="";
+   if(gain>=daily) r.classList.add("green");
+   else if(gain>=daily*0.8) r.classList.add("yellow");
+   else r.classList.add("red");
+
+   real.push(total);
+   ideal.push(expected);
+ });
+
+ let remain=Math.max(0,goal-total);
+ let pct=Math.min(100,total/goal*100);
+
+ document.getElementById("summary").innerHTML=`
+ <h3>%${pct.toFixed(1)} Tamamlandı</h3>
+ <b>Hedef:</b> ${goal.toFixed(2)} TL<br>
+ <b>Kazanılan:</b> ${total.toFixed(2)} TL<br>
+ <b>Kalan:</b> ${remain.toFixed(2)} TL<br>
+ <b>Bugünkü Ortalama Hedef:</b> ${daily.toFixed(2)} TL
+ `;
+ document.getElementById("bar").style.width=pct+"%";
+
+ save();
+}
+
+window.onload=()=>{
+ const today=new Date().toISOString().split("T")[0];
+ document.getElementById("start").value=today;
+ loadSaved();
+};
+</script>
+</body>
+</html>
