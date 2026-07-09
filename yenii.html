@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Index Takip" />
+<meta name="theme-color" content="#F6F1E6" />
+<title>Index Takip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F6F1E6;
+    --surface: #FFFDF8;
+    --ink: #2A231C;
+    --ink-soft: #7A6C5C;
+    --line: #E4D9C4;
+    --accent: #8C5A3C;
+    --good: #4F7858;
+    --good-soft: #E7EEE3;
+    --warn: #A85C3A;
+    --warn-soft: #F3E3D8;
+    --chipA-bg: #EFE6D4;
+    --chipA-text: #7C6640;
+    --chipB-bg: #E2E7DC;
+    --chipB-text: #5C6B50;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--paper); }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: 'Fraunces', Georgia, serif;
+    padding-bottom: max(50px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 560px; margin: 0 auto; padding: 32px 18px 40px; }
+
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 26px;
+  }
+
+  .field { margin-bottom: 18px; }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  input[type=number], input[type=date] {
+    width: 100%;
+    padding: 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px;
+    -webkit-appearance: none;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+
+  button.primary {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button.primary:active { opacity: .85; }
+
+  button.secondary {
+    width: 100%;
+    padding: 13px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 22px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .done-banner {
+    background: var(--good);
+    color: var(--surface);
+    border-radius: 9px;
+    padding: 11px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .summary-rows { display: flex; flex-direction: column; }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .summary-rows .summary-row:last-child { border-bottom: none; }
+  .summary-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .summary-value { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; }
+  .summary-value.big { font-size: 20px; color: var(--accent); }
+
+  .progress-wrap { margin-top: 16px; }
+  .progress-labels { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .progress-labels span { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+  .progress-track { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s ease; }
+
+  .legend { display: flex; gap: 10px; margin-bottom: 20px; }
+  .legend-item { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 13px; }
+  .legend-title {
+    display: flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink);
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .legend-desc { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+
+  .day-row {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .day-row.met { border-color: var(--good); }
+  .day-row.under { border-color: var(--warn); }
+  .day-row.today { box-shadow: 0 0 0 2px var(--accent) inset; }
+
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 11px; }
+  .day-num { font-weight: 600; font-size: 15px; }
+  .day-date { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-soft); }
+
+  .day-input-row { margin-bottom: 11px; }
+  .day-input-row input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .day-targets { display: flex; gap: 8px; }
+  .target-chip { flex: 1; border-radius: 8px; padding: 8px 10px; background: var(--chipA-bg); }
+  .target-chip.b { background: var(--chipB-bg); }
+  .target-chip-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--chipA-text);
+  }
+  .target-chip.b .target-chip-label { color: var(--chipB-text); }
+  .target-chip-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; margin-top: 3px; color: var(--ink); }
+  .surplus-note { font-size: 10px; color: var(--good); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="setupScreen">
+    <h1>Index Takip</h1>
+    <div class="sub">Günlük kazanç hedefi planlayıcı</div>
+
+    <div class="field">
+      <label for="goalAmount">Hedef Tutar (₺)</label>
+      <input type="number" id="goalAmount" inputmode="decimal" step="0.01" placeholder="12000">
+    </div>
+    <div class="field">
+      <label for="goalDays">Gün Sayısı</label>
+      <input type="number" id="goalDays" inputmode="numeric" step="1" placeholder="30">
+    </div>
+    <div class="field">
+      <label for="startDate">Başlangıç Tarihi</label>
+      <input type="date" id="startDate">
+    </div>
+    <button class="primary" id="createPlanBtn">Planı Oluştur</button>
+  </div>
+
+  <div id="planScreen" style="display:none;">
+    <h1>Index Takip</h1>
+    <div class="sub" id="planSub"></div>
+
+    <div class="summary-card" id="summaryCard"></div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-title"><span class="legend-dot" style="background:var(--chipA-text)"></span>Ortalama</div>
+        <div class="legend-desc">Kalan hedefi kalan gün sayısına yeniden böler.</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-title"><span class="legend-dot" style="background:var(--chipB-text)"></span>Ertesi Gün</div>
+        <div class="legend-desc">Farkın tamamını yalnızca bir sonraki güne aktarır.</div>
+      </div>
+    </div>
+
+    <div id="dayList"></div>
+
+    <button class="secondary" id="resetBtn">Yeni Plan Başlat</button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'hedefTakipData_v1';
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function saveState(s) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {}
+  }
+
+  var state = loadState();
+
+  var setupScreen = document.getElementById('setupScreen');
+  var planScreen = document.getElementById('planScreen');
+  var goalAmountInput = document.getElementById('goalAmount');
+  var goalDaysInput = document.getElementById('goalDays');
+  var startDateInput = document.getElementById('startDate');
+  var createPlanBtn = document.getElementById('createPlanBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var summaryCard = document.getElementById('summaryCard');
+  var planSub = document.getElementById('planSub');
+  var dayList = document.getElementById('dayList');
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function addDaysISO(iso, n) {
+    var parts = iso.split('-').map(Number);
+    var dt = new Date(parts[0], parts[1] - 1, parts[2]);
+    dt.setDate(dt.getDate() + n);
+    return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+  }
+
+  function formatTRY(num) {
+    if (num === null || num === undefined || isNaN(num)) return '—';
+    return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+  }
+
+  function formatDateTR(iso) {
+    var parts = iso.split('-').map(Number);
+    var dt = new Date(parts[0], parts[1] - 1, parts[2]);
+    return dt.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+  }
+
+  startDateInput.value = todayISO();
+
+  createPlanBtn.addEventListener('click', function () {
+    var goal = parseFloat(goalAmountInput.value);
+    var days = parseInt(goalDaysInput.value, 10);
+    var startDate = startDateInput.value;
+    if (!goal || goal <= 0 || !days || days <= 0 || !startDate) {
+      alert('Lütfen geçerli bir hedef tutar, gün sayısı ve başlangıç tarihi girin.');
+      return;
+    }
+    state = { goal: goal, days: days, startDate: startDate, entries: new Array(days).fill(null) };
+    saveState(state);
+    render();
+  });
+
+  resetBtn.addEventListener('click', function () {
+    if (confirm('Mevcut plan silinecek. Yeni bir plan oluşturmak istediğine emin misin?')) {
+      state = null;
+      localStorage.removeItem(STORAGE_KEY);
+      goalAmountInput.value = '';
+      goalDaysInput.value = '';
+      startDateInput.value = todayISO();
+      render();
+    }
+  });
+
+  function computeRows() {
+    var goal = state.goal, days = state.days, startDate = state.startDate, entries = state.entries;
+    var base = goal / days;
+    var remainingGoal = goal;
+    var remainingDays = days;
+    var carryDiff = 0;
+    var cumActual = 0;
+    var filledCount = 0;
+    var rows = [];
+
+    for (var i = 0; i < days; i++) {
+      var rawTarget1 = remainingDays > 0 ? remainingGoal / remainingDays : 0;
+      var rawTarget2 = base + carryDiff;
+
+      var raw = entries[i];
+      var hasActual = raw !== null && raw !== undefined && raw !== '';
+      var actual = hasActual ? parseFloat(raw) : null;
+
+      rows.push({
+        dayNum: i + 1,
+        date: addDaysISO(startDate, i),
+        target1: rawTarget1,
+        target2: rawTarget2,
+        actual: actual,
+        hasActual: hasActual
+      });
+
+      if (hasActual && !isNaN(actual)) {
+        cumActual += actual;
+        remainingGoal -= actual;
+        remainingDays -= 1;
+        filledCount += 1;
+      }
+
+      // Ertesi Gün hedefi her zaman ilerler: gerçek giriş varsa onu, yoksa
+      // o gün için 0 varsayar. Böylece büyük bir fazla girişten sonra rakam
+      // tüm kalan günlerde donup kalmaz; fazlayı kaç gün etkiliyorsa o kadar
+      // günde tüketir, sonra normale döner.
+      var actualForCascade = (hasActual && !isNaN(actual)) ? actual : 0;
+      carryDiff = rawTarget2 - actualForCascade;
+    }
+
+    return { rows: rows, base: base, cumActual: cumActual, remainingGoalRaw: remainingGoal, filledCount: filledCount };
+  }
+
+  function formatTargetDisplay(val) {
+    if (val <= 0.005) {
+      var note = val < -0.005 ? (formatTRY(Math.abs(val)) + ' fazla') : '';
+      return { main: '0,00 ₺', note: note };
+    }
+    return { main: formatTRY(val), note: '' };
+  }
+
+  function render() {
+    if (!state) {
+      setupScreen.style.display = 'block';
+      planScreen.style.display = 'none';
+      return;
+    }
+    setupScreen.style.display = 'none';
+    planScreen.style.display = 'block';
+
+    var result = computeRows();
+    var rows = result.rows;
+    var base = result.base;
+    var cumActual = result.cumActual;
+    var remainingGoal = Math.max(result.remainingGoalRaw, 0);
+    var remainingDaysCount = state.days - result.filledCount;
+    var progressPct = Math.min(100, Math.max(0, (cumActual / state.goal) * 100));
+    var isDone = cumActual >= state.goal;
+
+    var endDate = addDaysISO(state.startDate, state.days - 1);
+    planSub.textContent = formatDateTR(state.startDate) + ' – ' + formatDateTR(endDate) + ' · ' + state.days + ' gün';
+
+    summaryCard.innerHTML =
+      (isDone ? '<div class="done-banner">Hedefe ulaştın</div>' : '') +
+      '<div class="summary-rows">' +
+        '<div class="summary-row"><span class="summary-label">Hedef</span><span class="summary-value big">' + formatTRY(state.goal) + '</span></div>' +
+        '<div class="summary-row"><span class="summary-label">Günlük Temel Hedef</span><span class="summary-value">' + formatTRY(base) + '</span></div>' +
+        '<div class="summary-row"><span class="summary-label">Kazanılan</span><span class="summary-value">' + formatTRY(cumActual) + '</span></div>' +
+        '<div class="summary-row"><span class="summary-label">Kalan Hedef</span><span class="summary-value">' + formatTRY(remainingGoal) + '</span></div>' +
+        '<div class="summary-row"><span class="summary-label">Kalan Gün</span><span class="summary-value">' + remainingDaysCount + '</span></div>' +
+      '</div>' +
+      '<div class="progress-wrap"><div class="progress-labels"><span>İlerleme</span><span>' + progressPct.toFixed(0) + '%</span></div><div class="progress-track"><div class="progress-fill" style="width:' + progressPct + '%"></div></div></div>';
+
+    var todayStr = todayISO();
+    dayList.innerHTML = '';
+    rows.forEach(function (r) {
+      var div = document.createElement('div');
+      var statusClass = '';
+      if (r.hasActual) {
+        statusClass = r.actual >= base ? 'met' : 'under';
+      }
+      if (r.date === todayStr) statusClass += ' today';
+      div.className = 'day-row ' + statusClass;
+
+      var t1 = formatTargetDisplay(r.target1);
+      var t2 = formatTargetDisplay(r.target2);
+
+      div.innerHTML =
+        '<div class="day-head"><span class="day-num">' + r.dayNum + '. Gün</span><span class="day-date">' + formatDateTR(r.date) + '</span></div>' +
+        '<div class="day-input-row"><input type="number" inputmode="decimal" step="0.01" placeholder="Kazanç (₺)" value="' + (r.hasActual ? r.actual : '') + '" data-index="' + (r.dayNum - 1) + '"></div>' +
+        '<div class="day-targets">' +
+          '<div class="target-chip a"><div class="target-chip-label">Ortalama</div><div class="target-chip-value">' + t1.main + '</div>' + (t1.note ? '<div class="surplus-note">' + t1.note + '</div>' : '') + '</div>' +
+          '<div class="target-chip b"><div class="target-chip-label">Ertesi Gün</div><div class="target-chip-value">' + t2.main + '</div>' + (t2.note ? '<div class="surplus-note">' + t2.note + '</div>' : '') + '</div>' +
+        '</div>';
+
+      dayList.appendChild(div);
+    });
+
+    dayList.querySelectorAll('input[data-index]').forEach(function (inp) {
+      inp.addEventListener('change', function (e) {
+        var idx = parseInt(e.target.dataset.index, 10);
+        var val = e.target.value;
+        state.entries[idx] = (val === '' ? null : val);
+        saveState(state);
+        render();
+      });
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
